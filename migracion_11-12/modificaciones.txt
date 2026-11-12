@@ -1,0 +1,1 @@
+ERROR:  la columna «id_tipo_traspaso» de la relación «solicitudes_traspaso» contiene valores null 

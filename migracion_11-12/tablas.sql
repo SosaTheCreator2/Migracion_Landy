@@ -3,158 +3,18 @@
 -- Due to circular dependencies, the order in which Schema Diff writes objects may not be optimal 
 -- and manual changes to the script may be required to ensure changes are applied in the correct order.
 -- Please report any issues along with steps to reproduce. 
- BEGIN; 
- ALTER TABLE IF EXISTS public.clientes_movimiento DROP CONSTRAINT IF EXISTS clientes_movimiento_tipo_movimiento_check;
-
-ALTER TABLE IF EXISTS public.clientes_movimiento
-    ADD CONSTRAINT clientes_movimiento_tipo_movimiento_check CHECK (tipo_movimiento::text = ANY (ARRAY['CARGO'::character varying, 'ABONO'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.caz_op_receta DROP CONSTRAINT IF EXISTS chk_caz_op_receta_estatus;
-
-ALTER TABLE IF EXISTS public.caz_op_receta
-    ADD CONSTRAINT chk_caz_op_receta_estatus CHECK (estatus::text = ANY (ARRAY['BORRADOR'::character varying, 'CERRADA'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.pedido_transferencia_detalle DROP CONSTRAINT IF EXISTS pedido_transferencia_detalle_respuesta_check;
-
-ALTER TABLE IF EXISTS public.pedido_transferencia_detalle
-    ADD CONSTRAINT pedido_transferencia_detalle_respuesta_check CHECK (respuesta::text = ANY (ARRAY['Aceptar'::character varying, 'Modificar'::character varying, 'Rechazar'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.reservacion_mesa DROP CONSTRAINT IF EXISTS reservacion_mesa_como_conocio_check;
-
-ALTER TABLE IF EXISTS public.reservacion_mesa
-    ADD CONSTRAINT reservacion_mesa_como_conocio_check CHECK (como_conocio IS NULL OR (como_conocio::text = ANY (ARRAY['fb'::character varying, 'instagram'::character varying, 'tiktok'::character varying, 'x'::character varying, 'otro'::character varying, 'recomendacion'::character varying, 'flyer'::character varying]::text[])));
-ALTER TABLE IF EXISTS public.orden_entrada_autonoma_inventario_movimientos DROP CONSTRAINT IF EXISTS orden_entrada_autonoma_inventario_movimientos_estado_existencia;
-
-ALTER TABLE IF EXISTS public.orden_entrada_autonoma_inventario_movimientos
-    ADD CONSTRAINT orden_entrada_autonoma_inventario_movimientos_estado_existencia CHECK (estado_existencia::text = ANY (ARRAY['VENDIBLE'::character varying, 'RETENIDO'::character varying, 'NO_CONFORME'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.caja_chica_entrega_registros DROP CONSTRAINT IF EXISTS chk_caja_chica_entrega_registros_tipo;
-
-ALTER TABLE IF EXISTS public.caja_chica_entrega_registros
-    ADD CONSTRAINT chk_caja_chica_entrega_registros_tipo CHECK (tipo_registro::text = ANY (ARRAY['SALIDA'::character varying, 'RECEPCION'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.stock_sucursal_lote_existencias DROP CONSTRAINT IF EXISTS chk_stock_lote_existencias_estado;
-
-ALTER TABLE IF EXISTS public.stock_sucursal_lote_existencias
-    ADD CONSTRAINT chk_stock_lote_existencias_estado CHECK (estado_existencia::text = ANY (ARRAY['VENDIBLE'::character varying, 'RETENIDO'::character varying, 'NO_CONFORME'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.recepcion_no_conformidad_autonoma DROP CONSTRAINT IF EXISTS recepcion_no_conformidad_autonoma_tipo_check;
-
-ALTER TABLE IF EXISTS public.recepcion_no_conformidad_autonoma
-    ADD CONSTRAINT recepcion_no_conformidad_autonoma_tipo_check CHECK (tipo::text = ANY (ARRAY['RETENIDO'::character varying, 'NO_CONFORME'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.cazuelon_cancelacion_correo_outbox DROP CONSTRAINT IF EXISTS ck_cazuelon_cancelacion_correo_estado;
-
-ALTER TABLE IF EXISTS public.cazuelon_cancelacion_correo_outbox
-    ADD CONSTRAINT ck_cazuelon_cancelacion_correo_estado CHECK (estado::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'failed'::character varying, 'sent'::character varying]::text[]));
-
-DROP INDEX IF EXISTS public.idx_cazuelon_cancelacion_correo_pendiente;
-
-CREATE INDEX IF NOT EXISTS idx_cazuelon_cancelacion_correo_pendiente
-    ON public.cazuelon_cancelacion_correo_outbox USING btree
-    (fecha_proximo_intento ASC NULLS LAST, id ASC NULLS LAST)
-    TABLESPACE pg_default
-    WHERE estado::text = ANY (ARRAY['pending'::character varying, 'failed'::character varying, 'processing'::character varying]::text[]);
+BEGIN; 
 
 
-ALTER TABLE IF EXISTS public.caja_chica_operaciones DROP CONSTRAINT IF EXISTS chk_caja_chica_operaciones_estatus;
-
-ALTER TABLE IF EXISTS public.caja_chica_operaciones DROP CONSTRAINT IF EXISTS chk_caja_chica_operaciones_flujo_requerido;
-
-ALTER TABLE IF EXISTS public.caja_chica_operaciones DROP CONSTRAINT IF EXISTS chk_caja_chica_operaciones_tipo;
-
-ALTER TABLE IF EXISTS public.caja_chica_operaciones
-    ADD CONSTRAINT chk_caja_chica_operaciones_estatus CHECK (estatus::text = ANY (ARRAY['PENDIENTE_AUTORIZACION'::character varying, 'AUTORIZADA'::character varying, 'RECHAZADA'::character varying, 'PENDIENTE_VALIDACION'::character varying, 'CORRECCION_SOLICITADA'::character varying, 'VALIDADA'::character varying, 'PENDIENTE_PROCESO'::character varying, 'PENDIENTE_ENTREGA'::character varying, 'APLICADA'::character varying, 'CANCELADA'::character varying, 'PENDIENTE DE AUTORIZACIÓN'::character varying, 'PENDIENTE DE VALIDACIÓN'::character varying, 'CORRECCIÓN SOLICITADA'::character varying, 'VALIDADO'::character varying, 'PENDIENTE_DE_PROCESO'::character varying, 'PROGRAMADA'::character varying, 'EN_PROCESO'::character varying, 'PENDIENTE_ENTREGA_REEMBOLSO'::character varying, 'REEMBOLSADO'::character varying, 'SOLICITADA'::character varying, 'COMPLETADA'::character varying]::text[]));
-
-ALTER TABLE IF EXISTS public.caja_chica_operaciones
-    ADD CONSTRAINT chk_caja_chica_operaciones_flujo_requerido CHECK ((tipo_operacion::text <> ALL (ARRAY['REPOSICION'::character varying, 'AUMENTO_MONTO_ASIGNADO'::character varying, 'DISMINUCION_MONTO_ASIGNADO'::character varying, 'ASIGNACION_INICIAL'::character varying, 'RETIRO_TOTAL'::character varying]::text[])) AND NOT (tipo_operacion::text = 'REEMBOLSO'::text AND upper(COALESCE(concepto, ''::character varying)::text) = 'REEMBOLSO_CAMBIO_RESGUARDO'::text) OR id_estatus_flujo IS NOT NULL);
-
-ALTER TABLE IF EXISTS public.caja_chica_operaciones
-    ADD CONSTRAINT chk_caja_chica_operaciones_tipo CHECK (tipo_operacion::text = ANY (ARRAY['GASTO'::character varying, 'REEMBOLSO'::character varying, 'REPOSICION'::character varying, 'AUMENTO_MONTO_ASIGNADO'::character varying, 'DISMINUCION_MONTO_ASIGNADO'::character varying, 'ASIGNACION_INICIAL'::character varying, 'RETIRO_TOTAL'::character varying, 'AJUSTE'::character varying, 'CORTE_CAJA_CHICA'::character varying]::text[]));
-
-DROP INDEX IF EXISTS public.uq_cc_reembolso_cambio_resguardo_activo;
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_cc_reembolso_cambio_resguardo_activo
-    ON public.caja_chica_operaciones USING btree
-    (id_operacion_padre ASC NULLS LAST)
-    TABLESPACE pg_default
-    WHERE tipo_operacion::text = 'REEMBOLSO'::text AND concepto::text = 'REEMBOLSO_CAMBIO_RESGUARDO'::text AND enable = true AND (estatus::text = ANY (ARRAY['PENDIENTE_AUTORIZACION'::character varying, 'AUTORIZADA'::character varying, 'PENDIENTE_DE_PROCESO'::character varying, 'PROGRAMADA'::character varying, 'EN_PROCESO'::character varying, 'PENDIENTE_ENTREGA_REEMBOLSO'::character varying]::text[]));
-
-
-ALTER TABLE IF EXISTS public.stock_sucursal_lotes
-    ADD COLUMN clave_borrador character varying(160) COLLATE pg_catalog."default";
-
-ALTER TABLE IF EXISTS public.stock_sucursal_lotes
-    ADD COLUMN id_borrador bigint;
-CREATE UNIQUE INDEX IF NOT EXISTS ux_stock_sucursal_lotes_borrador_fila
-    ON public.stock_sucursal_lotes USING btree
-    (id_empresa ASC NULLS LAST, id_borrador ASC NULLS LAST, clave_borrador COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default
-    WHERE id_borrador IS NOT NULL AND clave_borrador IS NOT NULL;
-
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion DROP COLUMN IF EXISTS id_receta;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion DROP COLUMN IF EXISTS lote_pt;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion DROP COLUMN IF EXISTS notas;
 
 ALTER TABLE public.cat_ordenes_produccion
     ALTER COLUMN kg_mp_programados TYPE numeric(12, 4);
 ALTER TABLE IF EXISTS public.cat_ordenes_produccion
     ALTER COLUMN kg_mp_programados DROP NOT NULL;
 
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN id_empresa integer;
 
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN modalidad text COLLATE pg_catalog."default";
 
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN id_producto integer;
 
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN id_stock_lote bigint;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN version_despiece integer;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN configuracion jsonb;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN objetivos jsonb;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN calculo jsonb;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN version integer NOT NULL DEFAULT 1;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN creado_por integer;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN modificado_por integer;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN confirmado_por integer;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN fecha_confirmacion timestamp with time zone;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD COLUMN movimientos_confirmados jsonb;
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD CONSTRAINT cat_ordenes_produccion_confirmado_por_fkey FOREIGN KEY (confirmado_por)
-    REFERENCES public.cat_usuarios (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD CONSTRAINT cat_ordenes_produccion_creado_por_fkey FOREIGN KEY (creado_por)
-    REFERENCES public.cat_usuarios (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD CONSTRAINT cat_ordenes_produccion_id_empresa_fkey FOREIGN KEY (id_empresa)
-    REFERENCES public.cat_empresa (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
 
 ALTER TABLE IF EXISTS public.cat_ordenes_produccion
     ADD CONSTRAINT cat_ordenes_produccion_id_stock_lote_fkey FOREIGN KEY (id_stock_lote)
@@ -173,10 +33,6 @@ ALTER TABLE IF EXISTS public.cat_ordenes_produccion
     REFERENCES public.cat_productos (id_empresa, id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion DROP CONSTRAINT IF EXISTS chk_op_formula_refs;
-
-ALTER TABLE IF EXISTS public.cat_ordenes_produccion
-    ADD CONSTRAINT chk_op_formula_refs CHECK (tipo_formula::text = 'DESPIECE'::text AND id_despiece IS NOT NULL OR tipo_formula::text = 'RECETA'::text AND id_despiece IS NULL);
 
 ALTER TABLE IF EXISTS public.cat_ordenes_produccion
     ADD CONSTRAINT ck_op_kilo CHECK (modalidad IS DISTINCT FROM 'KILO'::text OR id_empresa IS NOT NULL AND id_empresa = 1 AND tipo_formula::text = 'DESPIECE'::text AND id_producto IS NOT NULL AND version_despiece IS NOT NULL AND version_despiece > 0 AND creado_por IS NOT NULL AND modificado_por IS NOT NULL AND configuracion IS NOT NULL AND jsonb_typeof(configuracion) = 'object'::text AND objetivos IS NOT NULL AND jsonb_typeof(objetivos) = 'array'::text AND jsonb_array_length(objetivos) >= 1 AND jsonb_array_length(objetivos) <= 200 AND calculo IS NOT NULL AND jsonb_typeof(calculo) = 'object'::text AND NOT kg_mp_programados IS DISTINCT FROM ((calculo ->> 'peso_requerido_kg'::text)::numeric));
@@ -209,29 +65,6 @@ CREATE INDEX IF NOT EXISTS ix_pop_orden_activos
     WHERE enable;
 
 
-ALTER TABLE IF EXISTS public.cuenta_cancelacion_solicitud DROP CONSTRAINT IF EXISTS ck_cuenta_cancelacion_movimiento;
-
-ALTER TABLE IF EXISTS public.cuenta_cancelacion_solicitud DROP CONSTRAINT IF EXISTS ck_cuenta_cancelacion_tipo;
-
-ALTER TABLE IF EXISTS public.cuenta_cancelacion_solicitud
-    ADD CONSTRAINT ck_cuenta_cancelacion_movimiento CHECK (tipo_movimiento::text = ANY (ARRAY['CANCELACION'::character varying, 'CAMBIO'::character varying]::text[]));
-
-ALTER TABLE IF EXISTS public.cuenta_cancelacion_solicitud
-    ADD CONSTRAINT ck_cuenta_cancelacion_tipo CHECK (tipo_cancelacion::text = ANY (ARRAY['TOTAL'::character varying, 'PARCIAL'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.cat_usuarios
-    ADD CONSTRAINT fk_cat_usuarios_empresa FOREIGN KEY (id_empresa)
-    REFERENCES public.cat_empresa (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION
-    NOT VALID;
-ALTER TABLE IF EXISTS public.stock_decomisos DROP CONSTRAINT IF EXISTS stock_decomisos_estatus_check;
-
-ALTER TABLE IF EXISTS public.stock_decomisos
-    ADD CONSTRAINT stock_decomisos_estatus_check CHECK (estatus::text = ANY (ARRAY['EN_PROCESO'::character varying, 'RETORNADO'::character varying]::text[]));
-ALTER TABLE IF EXISTS public.traspaso_contador_folios DROP CONSTRAINT IF EXISTS traspaso_contador_folios_tipo_check;
-
-ALTER TABLE IF EXISTS public.traspaso_contador_folios
-    ADD CONSTRAINT traspaso_contador_folios_tipo_check CHECK (tipo::text = ANY (ARRAY['ST'::character varying, 'PT'::character varying]::text[]));
 ALTER TABLE IF EXISTS public.ventas DROP CONSTRAINT IF EXISTS ck_ventas_descuento_tipo;
 
 ALTER TABLE IF EXISTS public.ventas
@@ -251,7 +84,7 @@ ALTER TABLE IF EXISTS public.cazuelon_caja_cortes
     ADD CONSTRAINT ck_cazuelon_caja_cortes_tipo CHECK (tipo::text = ANY (ARRAY['precorte'::character varying, 'efectivo'::character varying, 'final'::character varying]::text[]));
 ALTER TABLE IF EXISTS public.precio_actualizacion_lotes
     ADD COLUMN aplicacion_inmediata boolean NOT NULL DEFAULT false;
-
+--- me quede aqui
 ALTER TABLE IF EXISTS public.precio_actualizacion_lotes
     ADD COLUMN idempotency_key uuid;
 ALTER TABLE IF EXISTS public.precio_actualizacion_lotes DROP CONSTRAINT IF EXISTS chk_precio_actualizacion_lotes_estatus;
@@ -291,12 +124,6 @@ ALTER TABLE IF EXISTS public.pedidos_transferencia DROP CONSTRAINT IF EXISTS ped
 
 ALTER TABLE IF EXISTS public.pedidos_transferencia
     ADD CONSTRAINT ck_pedidos_transferencia_estatus CHECK (estatus::text = ANY (ARRAY['Pendiente'::character varying, 'Aceptado'::character varying, 'Rechazado'::character varying, 'Listo para pick'::character varying, 'Enviado'::character varying, 'Recibido'::character varying, 'Cancelado'::character varying]::text[]));
-
-ALTER TABLE IF EXISTS public.pedidos_transferencia
-    ADD CONSTRAINT ck_pedidos_transferencia_folio CHECK (folio::text ~ '^PT[0-9]{3,4}-[0-9]+$'::text);
-
-ALTER TABLE IF EXISTS public.pedidos_transferencia
-    ADD CONSTRAINT pedidos_transferencia_prioridad_check CHECK (prioridad::text = ANY (ARRAY['Normal'::character varying, 'Alta'::character varying, 'Urgente'::character varying]::text[]));
 ALTER TABLE IF EXISTS public.produccion_batidas DROP CONSTRAINT IF EXISTS ck_produccion_batidas_estado;
 
 ALTER TABLE IF EXISTS public.produccion_batidas DROP CONSTRAINT IF EXISTS produccion_batidas_tipo_proceso_check;
@@ -343,7 +170,7 @@ ALTER TABLE IF EXISTS public.almacen_ubicaciones
 ALTER TABLE IF EXISTS public.almacen_ubicaciones
     ADD CONSTRAINT chk_almacen_ubicaciones_movilidad CHECK (movilidad::text = ANY (ARRAY['FIJA'::character varying, 'MOVIL'::character varying]::text[]));
 ALTER TABLE IF EXISTS public.solicitudes_traspaso
-    ADD COLUMN id_tipo_traspaso integer NOT NULL;
+    ADD COLUMN id_tipo_traspaso integer;
 ALTER TABLE IF EXISTS public.solicitudes_traspaso DROP CONSTRAINT IF EXISTS solicitudes_traspaso_estatus_check;
 
 ALTER TABLE IF EXISTS public.solicitudes_traspaso
@@ -519,9 +346,9 @@ ALTER TABLE IF EXISTS public.mig_20260813_producto_establecimiento_respaldo DROP
 
 ALTER TABLE IF EXISTS public.mig_20260813_producto_establecimiento_respaldo
     ADD CONSTRAINT chk_mig_20260813_producto_establecimiento_clasificacion CHECK (clasificacion::text = ANY (ARRAY['AMBAS_REFERENCIAS_HUERFANAS'::character varying, 'PRODUCTO_HUERFANO'::character varying, 'ESTABLECIMIENTO_HUERFANO'::character varying, 'CRUCE_PRODUCTO_ESTABLECIMIENTO'::character varying, 'EMPRESA_PUENTE_CORREGIBLE'::character varying]::text[]));
- END;
+END;
 
-
+COMMIT;
 
 -- source only
 -- This script was generated by the Schema Diff utility in pgAdmin 4. 
